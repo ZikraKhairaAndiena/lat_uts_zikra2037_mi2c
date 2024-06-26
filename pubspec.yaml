@@ -40,6 +40,7 @@ dependencies:
   intl: ^0.18.1
   http: ^1.2.1
   shared_preferences: ^2.2.2
+  image_picker: ^1.0.4
 
 dev_dependencies:
   flutter_test:
@@ -65,21 +66,6 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-      - gambar/plane.jpg
-      - gambar/aladdin.jpg
-      - gambar/avatar.jpg
-      - gambar/harry_potter.jpg
-      - gambar/it.jpg
-      - gambar/jumanji.jpg
-      - gambar/keluarga_cemara.jpg
-      - gambar/maleficent.jpg
-      - gambar/parasite.jpg
-      - gambar/nemo.jpg
-      - gambar/big_hero.jpg
-      - gambar/lalaland.jpg
-      - gambar/cruella.jpg
-      - gambar/twilight.jpg
-      - gambar/up.jpg
       - gambar/logopnp.png
 
   # An image asset can refer to one or more resolution-specific "variants", see

@@ -1,26 +1,25 @@
-
 // To parse this JSON data, do
 //
-//     final modelPegawai = modelPegawaiFromJson(jsonString);
+//     final modelUser = modelUserFromJson(jsonString);
 
 import 'dart:convert';
 
-ModelPegawai modelPegawaiFromJson(String str) => ModelPegawai.fromJson(json.decode(str));
+ModelUser modelUserFromJson(String str) => ModelUser.fromJson(json.decode(str));
 
-String modelPegawaiToJson(ModelPegawai data) => json.encode(data.toJson());
+String modelUserToJson(ModelUser data) => json.encode(data.toJson());
 
-class ModelPegawai {
+class ModelUser {
   bool isSuccess;
   String message;
   List<Datum> data;
 
-  ModelPegawai({
+  ModelUser({
     required this.isSuccess,
     required this.message,
     required this.data,
   });
 
-  factory ModelPegawai.fromJson(Map<String, dynamic> json) => ModelPegawai(
+  factory ModelUser.fromJson(Map<String, dynamic> json) => ModelUser(
     isSuccess: json["isSuccess"],
     message: json["message"],
     data: List<Datum>.from(json["data"].map((x) => Datum.fromJson(x))),
@@ -36,35 +35,35 @@ class ModelPegawai {
 class Datum {
   String id;
   String nama;
-  String nobp;
-  String nohp;
+  String username;
+  String password;
   String email;
-  DateTime tanggalInput;
+  String nohp;
 
   Datum({
     required this.id,
     required this.nama,
-    required this.nobp,
-    required this.nohp,
+    required this.username,
+    required this.password,
     required this.email,
-    required this.tanggalInput,
+    required this.nohp,
   });
 
   factory Datum.fromJson(Map<String, dynamic> json) => Datum(
     id: json["id"],
     nama: json["nama"],
-    nobp: json["nobp"],
-    nohp: json["nohp"],
+    username: json["username"],
+    password: json["password"],
     email: json["email"],
-    tanggalInput: DateTime.parse(json["tanggal_input"]),
+    nohp: json["nohp"],
   );
 
   Map<String, dynamic> toJson() => {
     "id": id,
     "nama": nama,
-    "nobp": nobp,
-    "nohp": nohp,
+    "username": username,
+    "password": password,
     "email": email,
-    "tanggal_input": tanggalInput.toIso8601String(),
+    "nohp": nohp,
   };
 }

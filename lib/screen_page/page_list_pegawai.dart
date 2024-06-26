@@ -1,11 +1,14 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
+import 'package:intl/intl.dart';
 import 'package:lat_uts_zikra/screen_page/page_bottom_navigation.dart';
-import 'package:lat_uts_zikra/screen_page/page_edit_pegawai.dart';
-import 'package:lat_uts_zikra/screen_page/page_login_api.dart';
+
+import '../model/model_add_karyawan.dart';
 import '../model/model_pegawai.dart';
-import '../utils/session_manager.dart';
+
+
+//list karyawan
 
 class PageKaryawan extends StatefulWidget {
   @override
@@ -26,7 +29,7 @@ class _PageKaryawanState extends State<PageKaryawan> {
   Future<void> fetchData() async {
     try {
       final response = await http.get(
-          Uri.parse("http://192.168.100.110/edukasi_server/getPegawai.php"));
+          Uri.parse("http://192.168.100.110/edukasi_server(1)/getPegawai.php"));
 
       if (response.statusCode == 200) {
         final jsonResponse = json.decode(response.body);
@@ -68,33 +71,13 @@ class _PageKaryawanState extends State<PageKaryawan> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Data Pegawai',
+        title: Text(
+          'Data Karyawan',
           style: TextStyle(
-            color: Colors.black, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.cyan,
-        iconTheme: IconThemeData(
-          color: Colors.black, // Ubah warna ikon back menjadi putih
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            tooltip: 'Logout',
-          )
-        ],
+        centerTitle: true,
       ),
       body: Column(
         children: [
@@ -103,7 +86,7 @@ class _PageKaryawanState extends State<PageKaryawan> {
             child: TextField(
               controller: txtCari,
               decoration: InputDecoration(
-                hintText: 'Cari Pegawai...',
+                hintText: 'Cari karyawan...',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
@@ -188,24 +171,26 @@ class _PageKaryawanState extends State<PageKaryawan> {
                           children: [
                             IconButton(
                               onPressed: () {
-                                // Hapus data karyawan
                                 showDialog(
                                   context: context,
                                   builder: (context) => AlertDialog(
-                                    title: Text('Konfirmasi Hapus'),
-                                    content: Text('Apakah Anda yakin ingin menghapus data ini?'),
-                                    actions: <Widget>[
+                                    title: Text('Hapus Data'),
+                                    content: Text(
+                                        'Apakah Anda yakin ingin menghapus data ini?'
+                                    ),
+                                    actions: [
                                       TextButton(
                                         onPressed: () {
-                                          Navigator.of(context).pop(false); // Tutup dialog
+                                          Navigator.of(context)
+                                              .pop();
                                         },
-                                        child: Text('Tidak'),
+                                        child: Text('Batal'),
                                       ),
                                       TextButton(
                                         onPressed: () {
                                           // Kirim request untuk menghapus data karyawan
                                           http.post(
-                                            Uri.parse('http://192.168.100.110/edukasi_server/deletePegawai.php'),
+                                            Uri.parse('http://192.168.100.110/edukasi_server(1)/delPegawai.php'),
                                             body: {'id': entry.value.id.toString()}, // Kirim ID karyawan yang akan dihapus
                                           ).then((response) {
                                             // Memeriksa respons dari server
@@ -230,7 +215,7 @@ class _PageKaryawanState extends State<PageKaryawan> {
                                                             Navigator.pushAndRemoveUntil(
                                                               context,
                                                               MaterialPageRoute(builder: (context) => PageBottomNavigationBar()),
-                                                                  (route) => false, // Hapus semua halaman yang ada di dalam stack navigasi
+                                                                  (route) => false,
                                                             );
                                                           },
                                                           child: Text("OK"),
@@ -292,24 +277,7 @@ class _PageKaryawanState extends State<PageKaryawan> {
                             ),
                             IconButton(
                               onPressed: () {
-                                // Edit data karyawan
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => PageEditKaryawan( data: entry.value),
-                                  ),
-                                ).then((updatedData) {
-                                  if (updatedData != null) {
-                                    // Perbarui data karyawan yang ada dengan data yang telah diubah
-                                    setState(() {
-                                      // Cari indeks data karyawan yang diperbarui
-                                      int dataIndex = filteredPegawaiList.indexWhere((pegawai) => pegawai.id == updatedData.id);
-                                      if (dataIndex != -1) {
-                                        filteredPegawaiList[dataIndex] = updatedData;
-                                      }
-                                    });
-                                  }
-                                });
+                                _editData(entry.value); // Edit data
                               },
                               icon: Icon(Icons.edit),
                             ),
@@ -330,7 +298,12 @@ class _PageKaryawanState extends State<PageKaryawan> {
           Navigator.push(
             context,
             MaterialPageRoute(builder: (context) => PageTambahKaryawan()),
-          );
+          ).then((value) {
+            if (value == true) {
+              // Jika berhasil menambahkan data, perbarui tampilan
+              fetchData();
+            }
+          });
         },
         child: Icon(Icons.add),
         backgroundColor: Colors.blue,
@@ -338,53 +311,370 @@ class _PageKaryawanState extends State<PageKaryawan> {
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
+
+  void _deleteData(int id) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: Text("Konfirmasi"),
+          content: Text("Apakah Anda yakin ingin menghapus data ini?"),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: Text("Batal"),
+            ),
+            TextButton(
+              onPressed: () {
+                _performDelete(id); // Panggil metode untuk menghapus data
+              },
+              child: Text("Hapus"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _performDelete(int id) async {
+    try {
+      final response = await http.post(
+        Uri.parse('http://192.168.100.110/edukasi_server(1)/delPegawai.php'),
+        body: {'id': id.toString()},
+      );
+
+      if (response.statusCode == 200) {
+        var jsonResponse = json.decode(response.body);
+        if (jsonResponse['is_success'] == true) {
+          // Jika penghapusan berhasil, perbarui tampilan
+          fetchData();
+          Navigator.pop(context);
+        } else {
+          // Jika gagal, tampilkan pesan kesalahan
+          showDialog(
+            context: context,
+            builder: (context) {
+              return AlertDialog(
+                title: Text("Gagal"),
+                content:
+                Text("Terjadi kesalahan: ${jsonResponse['message']}"),
+                actions: [
+                  TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                    },
+                    child: Text("OK"),
+                  ),
+                ],
+              );
+            },
+          );
+        }
+      } else {
+        // Jika gagal, tampilkan pesan kesalahan umum
+        showDialog(
+          context: context,
+          builder: (context) {
+            return AlertDialog(
+              title: Text("Gagal"),
+              content:
+              Text("Terjadi kesalahan saat mengirim data ke server"),
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    Navigator.pop(context);
+                  },
+                  child: Text("OK"),
+                ),
+              ],
+            );
+          },
+        );
+      }
+    } catch (error) {
+      // Tangani kesalahan koneksi atau lainnya
+      showDialog(
+        context: context,
+        builder: (context) {
+          return AlertDialog(
+            title: Text("Gagal"),
+            content: Text("Terjadi kesalahan: $error"),
+            actions: [
+              TextButton(
+                onPressed: () {
+                  Navigator.pop(context);
+                },
+                child: Text("OK"),
+              ),
+            ],
+          );
+        },
+      );
+    }
+  }
+
+  void _editData(Datum data) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PageEditKaryawan(data: data),
+      ),
+    ).then((value) {
+      if (value == true) {
+        // Jika berhasil mengedit data, perbarui tampilan
+        fetchData();
+      }
+    });
+  }
 }
 
+
+
+//add karyawan
 class PageTambahKaryawan extends StatefulWidget {
-  const PageTambahKaryawan({Key? key});
+  const PageTambahKaryawan({Key? key}) : super(key: key);
 
   @override
   State<PageTambahKaryawan> createState() => _PageTambahKaryawanState();
 }
 
 class _PageTambahKaryawanState extends State<PageTambahKaryawan> {
-  TextEditingController txtNamaLengkap = TextEditingController();
+  TextEditingController txtNama = TextEditingController();
+  TextEditingController txtNobp = TextEditingController();
+  TextEditingController txtNohp = TextEditingController();
   TextEditingController txtEmail = TextEditingController();
-  TextEditingController txtNoBP = TextEditingController();
-  TextEditingController txtNoHP = TextEditingController();
+  TextEditingController tanggalInput = TextEditingController();
+
   GlobalKey<FormState> keyForm = GlobalKey<FormState>();
+
+  bool isLoading = false;
+
+  Future<void> registerPegawai() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      http.Response response = await http.post(
+        Uri.parse('http://192.168.100.110/edukasi_server(1)/addPegawai.php'),
+        body: {
+          "nama": txtNama.text,
+          "nobp": txtNobp.text,
+          "nohp": txtNohp.text,
+          "email": txtEmail.text,
+          "tanggal_input": tanggalInput.text,
+        },
+      );
+
+      ModelAddPegawai data = modelAddPegawaiFromJson(response.body);
+
+      setState(() {
+        isLoading = false;
+      });
+
+      if (data.value == 1) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${data.message}')),
+        );
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => PageBottomNavigationBar()),
+              (route) => false,
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${data.message}')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: ${e.toString()}')),
+        );
+      });
+    }
+  }
+
+  Future<void> selectDate() async {
+    DateTime? pickedDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now(),
+      firstDate: DateTime(1950),
+      lastDate: DateTime(2100),
+    );
+
+    if (pickedDate != null) {
+      setState(() {
+        tanggalInput.text = DateFormat('yyyy-MM-dd').format(pickedDate);
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Tambah Data Pegawai',
+        backgroundColor: Colors.blue,
+        title: Text(
+          'Tambah Karyawan',
           style: TextStyle(
-            color: Colors.white, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.black,
-        iconTheme: IconThemeData(
-          color: Colors.white, // Ubah warna ikon back menjadi putih
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            tooltip: 'Logout',
-          )
-        ],
+        centerTitle: true,
+      ),
+      body: Form(
+        key: keyForm,
+        autovalidateMode: AutovalidateMode.onUserInteraction,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: SingleChildScrollView(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SizedBox(height: 20),
+                TextFormField(
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
+                  controller: txtNama,
+                  decoration: InputDecoration(
+                    hintText: 'Nama Lengkap',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextFormField(
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
+                  controller: txtNobp,
+                  decoration: InputDecoration(
+                    hintText: 'No BP',
+                    prefixIcon: Icon(Icons.people_outline_outlined),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextFormField(
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
+                  controller: txtEmail,
+                  decoration: InputDecoration(
+                    hintText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextFormField(
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
+                  controller: txtNohp,
+                  decoration: InputDecoration(
+                    hintText: 'No HP',
+                    prefixIcon: Icon(Icons.phone),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextFormField(
+                  onTap: () {
+                    selectDate();
+                  },
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
+                  controller: tanggalInput,
+                  decoration: InputDecoration(
+                    hintText: 'Tanggal Input',
+                    prefixIcon: Icon(Icons.calendar_today),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                SizedBox(height: 20),
+                ElevatedButton(
+                  onPressed: () async {
+                    if (keyForm.currentState?.validate() == true) {
+                      await registerPegawai();
+                    }
+                  },
+                  child: Text('SIMPAN'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+
+//edit karyawan
+class PageEditKaryawan extends StatefulWidget {
+  final Datum data;
+
+  const PageEditKaryawan({Key? key, required this.data}) : super(key: key);
+
+  @override
+  State<PageEditKaryawan> createState() => _PageEditKaryawanState();
+}
+
+class _PageEditKaryawanState extends State<PageEditKaryawan> {
+  late TextEditingController txtNamaLengkap;
+  late TextEditingController txtEmail;
+  late TextEditingController txtNoBP;
+  late TextEditingController txtNoHP;
+  GlobalKey<FormState> keyForm = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    txtNamaLengkap = TextEditingController(text: widget.data.nama);
+    txtEmail = TextEditingController(text: widget.data.email);
+    txtNoBP = TextEditingController(text: widget.data.nobp);
+    txtNoHP = TextEditingController(text: widget.data.nohp);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: Text(
+          'Edit Data Karyawan',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
       ),
       body: Form(
         key: keyForm,
@@ -459,48 +749,24 @@ class _PageTambahKaryawanState extends State<PageTambahKaryawan> {
                 ElevatedButton(
                   onPressed: () {
                     if (keyForm.currentState?.validate() == true) {
-                      // Membuat objek data karyawan dari input pengguna
-                      var dataKaryawan = {
-                        'nama': txtNamaLengkap.text,
-                        'nobp': txtNoBP.text,
-                        'email': txtEmail.text,
-                        'nohp': txtNoHP.text,
-                      };
-
-                      // Mengirim data ke server
+                      // Kirim data perubahan ke server
                       http.post(
-                        Uri.parse('http://192.168.100.110/edukasi_server/simpanPegawai.php'),
-                        body: dataKaryawan,
+                        Uri.parse('http://192.168.100.110/edukasi_server(1)/updatePegawai.php'),
+                        body: {
+                          'id': widget.data.id.toString(),
+                          'nama': txtNamaLengkap.text,
+                          'nobp': txtNoBP.text,
+                          'email': txtEmail.text,
+                          'nohp': txtNoHP.text,
+                        },
                       ).then((response) {
-                        // Memeriksa respons dari server
                         if (response.statusCode == 200) {
                           var jsonResponse = json.decode(response.body);
-                          if (jsonResponse['isSuccess'] == true) {
-                            // Jika penyimpanan berhasil, berikan respons kepada pengguna
-                            showDialog(
-                              context: context,
-                              builder: (context) {
-                                return AlertDialog(
-                                  title: Text("Sukses"),
-                                  content: Text("Data karyawan berhasil disimpan"),
-                                  actions: [
-                                    TextButton(
-                                      onPressed: () {
-                                        // Kembali ke halaman sebelumnya sampai dengan halaman PageKaryawan
-                                        Navigator.pushAndRemoveUntil(
-                                          context,
-                                          MaterialPageRoute(builder: (context) => PageBottomNavigationBar()),
-                                              (route) => false, // Hapus semua halaman yang ada di dalam stack navigasi
-                                        );
-                                      },
-                                      child: Text("OK"),
-                                    ),
-                                  ],
-                                );
-                              },
-                            );
+                          if (jsonResponse['is_success'] == true) {
+                            // Jika pembaruan berhasil, kembalikan data yang diperbarui ke halaman sebelumnya
+                            Navigator.pop(context, true); // Sinyal perubahan berhasil
                           } else {
-                            // Jika penyimpanan gagal, tampilkan pesan kesalahan
+                            // Jika pembaruan gagal, tampilkan pesan kesalahan
                             showDialog(
                               context: context,
                               builder: (context) {
@@ -569,5 +835,15 @@ class _PageTambahKaryawanState extends State<PageTambahKaryawan> {
         ),
       ),
     );
+  }
+
+  @override
+  void dispose() {
+    // Pastikan untuk membersihkan controller
+    txtNamaLengkap.dispose();
+    txtEmail.dispose();
+    txtNoBP.dispose();
+    txtNoHP.dispose();
+    super.dispose();
   }
 }

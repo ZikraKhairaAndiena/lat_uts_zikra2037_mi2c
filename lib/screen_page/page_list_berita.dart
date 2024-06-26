@@ -1,133 +1,115 @@
-
-
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:lat_uts_zikra/screen_page/page_detail_berita.dart';
 import 'package:lat_uts_zikra/screen_page/page_login_api.dart';
+import 'package:lat_uts_zikra/screen_page/page_profil_user.dart';
 import '../model/model_berita.dart';
 import '../utils/session_manager.dart';
 
-class PageListBerita extends StatefulWidget {
-  const PageListBerita({Key? key}) : super(key: key);
+class PageBerita extends StatefulWidget {
+  const PageBerita({Key? key}) : super(key: key);
 
   @override
-  State<PageListBerita> createState() => _PageListBeritaState();
+  State<PageBerita> createState() => _PageBeritaState();
 }
 
-class _PageListBeritaState extends State<PageListBerita> {
-  TextEditingController searchController = TextEditingController();
-  List<Datum>? beritaList;
-  String? username;
-  List<Datum>? filteredBeritaList; // List berita hasil filter
+class _PageBeritaState extends State<PageBerita> with SingleTickerProviderStateMixin {
+  late Future<List<Datum>?> _beritaFuture;
+  late TabController tabController;
+  late Color? containerColor;
+  late SessionLatihanManager sessionManager;
+  TextEditingController txtCari = TextEditingController();
 
   @override
   void initState() {
     super.initState();
-    session.getSession();
-    getDataSession();
+    sessionManager = SessionLatihanManager();
+    _beritaFuture = getBerita();
+    tabController = TabController(length: 3, vsync: this);
+    containerColor = Colors.transparent;
+    tabController.addListener(_handleTabSelection);
+    sessionManager.getSession();
   }
 
-  Future getDataSession() async {
-    await Future.delayed(const Duration(seconds: 1), () {
-      session.getSession().then((value) {
-        print('data sesi .. ' + value.toString());
-        username = session.userName;
-      });
+  void _handleTabSelection() {
+    setState(() {
+      containerColor = Colors.blue;
     });
   }
 
   Future<List<Datum>?> getBerita() async {
     try {
-      // Berhasil
       http.Response response = await http.get(
-        Uri.parse("http://192.168.100.110/edukasi_server1/getBerita.php"),
-      );
-
+          Uri.parse("http://192.168.100.110/edukasi_server(1)/getBerita.php"));
       return modelBeritaFromJson(response.body).data;
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.toString())),
+        SnackBar(
+          content: Text(
+            e.toString(),
+          ),
+        ),
       );
+      return null;
     }
+  }
+
+  List<Datum> filterBerita(List<Datum>? berita, String keyword) {
+    if (berita == null) return [];
+    if (keyword.isEmpty) return berita;
+    return berita.where((item) =>
+        item.judul.toLowerCase().contains(keyword.toLowerCase())).toList();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Aplikasi Berita',
-          style: TextStyle(
-            color: Colors.black, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.cyan,
-        iconTheme: IconThemeData(
-          color: Colors.black, // Ubah warna ikon back menjadi putih
-        ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            tooltip: 'Logout',
-          )
-        ],
-      ),
       body: Column(
         children: [
           Padding(
-            padding: EdgeInsets.all(8),
+            padding: const EdgeInsets.all(10.0),
             child: TextField(
-              controller: searchController,
-              onChanged: (value) {
-                setState(() {
-                  filteredBeritaList = beritaList
-                      ?.where((element) =>
-                  element.judul!
-                      .toLowerCase()
-                      .contains(value.toLowerCase()) ||
-                      element.konten!
-                          .toLowerCase()
-                          .contains(value.toLowerCase()))
-                      .toList();
-                });
-              },
+              controller: txtCari,
               decoration: InputDecoration(
-                labelText: "Search",
-                hintText: "Search",
+                hintText: 'Cari berita...',
                 prefixIcon: Icon(Icons.search),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.all(Radius.circular(10)),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               ),
+              onChanged: (_) {
+                setState(() {});
+              },
             ),
           ),
           Expanded(
             child: FutureBuilder(
-              future: getBerita(),
-              builder: (BuildContext context,
-                  AsyncSnapshot<List<Datum>?> snapshot) {
-                if (snapshot.hasData) {
-                  beritaList = snapshot.data;
-                  if (filteredBeritaList == null) {
-                    filteredBeritaList = beritaList;
-                  }
-                  return ListView.builder(
-                    itemCount: filteredBeritaList!.length,
+              future: _beritaFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(
+                    child: CircularProgressIndicator(
+                      color: Colors.orange,
+                    ),
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(
+                    child: Text(snapshot.error.toString()),
+                  );
+                } else if (snapshot.hasData) {
+                  List<Datum>? berita = snapshot.data as List<Datum>?;
+                  List<Datum> filteredBerita = filterBerita(
+                      berita, txtCari.text); // Filter the news
+                  return filteredBerita.isEmpty
+                      ? Center(
+                    child: Text('Tidak ada berita yang ditemukan.'),
+                  )
+                      : ListView.builder(
+                    itemCount: filteredBerita.length,
                     itemBuilder: (context, index) {
-                      Datum data = filteredBeritaList![index];
+                      Datum data = filteredBerita[index];
                       return Padding(
-                        padding: EdgeInsets.all(10),
+                        padding: const EdgeInsets.all(10),
                         child: GestureDetector(
                           onTap: () {
                             Navigator.push(
@@ -139,20 +121,29 @@ class _PageListBeritaState extends State<PageListBerita> {
                           },
                           child: Card(
                             child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment:
+                              CrossAxisAlignment.start,
                               children: [
                                 Padding(
-                                    padding: EdgeInsets.all(4),
-                                    child: ClipRRect(
-                                      borderRadius: BorderRadius.circular(10),
-                                      child: Image.network('http://192.168.100.110/edukasi_server1/gambar_berita/${data.gambar}',
-                                        fit: BoxFit.fill,
+                                  padding: const EdgeInsets.all(4),
+                                  child: ClipRRect(
+                                    borderRadius:
+                                    BorderRadius.circular(10),
+                                    child: Center(
+                                      child: Image.network(
+                                        'http://'
+                                            '192.168.100.110/edukasi_server(1)/gambar_berita/${data
+                                            .gambar}',
+                                        width: 250,
+                                        height: 300,
+                                        fit: BoxFit.cover,
                                       ),
-                                    )
+                                    ),
+                                  ),
                                 ),
                                 ListTile(
                                   title: Text(
-                                    '${data.judul}',
+                                    data.judul,
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: Colors.orange,
@@ -160,14 +151,13 @@ class _PageListBeritaState extends State<PageListBerita> {
                                     ),
                                   ),
                                   subtitle: Text(
-                                    '${data.konten}',
+                                    data.berita,
                                     maxLines: 2,
                                     style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.black,
-                                    ),
+                                        fontSize: 12,
+                                        color: Colors.black),
                                   ),
-                                )
+                                ),
                               ],
                             ),
                           ),
@@ -175,21 +165,83 @@ class _PageListBeritaState extends State<PageListBerita> {
                       );
                     },
                   );
-                } else if (snapshot.hasError) {
-                  return Center(
-                    child: Text(snapshot.error.toString()),
-                  );
                 } else {
-                  return const Center(
-                    child: CircularProgressIndicator(
-                      color: Colors.green,
-                    ),
+                  return Center(
+                    child: Text('No data available.'),
                   );
                 }
               },
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+class DetailBerita extends StatelessWidget {
+  final Datum? data;
+  const DetailBerita(this.data, {Key? key}) : super(key: key);
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: Colors.blue,
+        title: Text(
+          'Berita Edukasi',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        centerTitle: true,
+      ),
+      body: data != null
+          ? ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(10),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(10),
+              child: Image.network(
+                'http://192.168.100.110/edukasi_server(1)/gambar_berita/${data?.gambar}',
+                height: 300,
+                fit: BoxFit.fill,
+              ),
+            ),
+          ),
+          ListTile(
+            title: Text(
+              data!.judul,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            trailing: const Icon(
+              Icons.star,
+              color: Colors.red,
+            ),
+          ),
+          ListTile(
+            title: Text(
+              data!.konten,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+            ),
+            trailing: const Icon(
+              Icons.star,
+              color: Colors.red,
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.only(right: 16, bottom: 16, left: 16),
+            child: Text(
+              data!.berita,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w400),
+              textAlign: TextAlign.justify,
+            ),
+          )
+        ],
+      )
+          : Center(
+        child: Text('Data tidak tersedia.'),
       ),
     );
   }

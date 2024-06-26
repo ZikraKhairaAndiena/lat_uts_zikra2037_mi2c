@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:lat_uts_zikra/screen_page/page_bottom_navigation.dart';
 import 'package:lat_uts_zikra/screen_page/splash_screen.dart';
+
+
 
 void main() {
   runApp(const MyApp());

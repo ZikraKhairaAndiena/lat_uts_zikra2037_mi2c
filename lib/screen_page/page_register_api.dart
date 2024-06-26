@@ -3,237 +3,212 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:lat_uts_zikra/screen_page/page_login_api.dart';
-import '../model/model_register.dart';
-import '../utils/session_manager.dart';
 
-class PageRegisterApi extends StatefulWidget {
-  const PageRegisterApi({super.key});
+import '../model/model_register.dart';
+
+
+class PageFormRegister extends StatefulWidget {
+  const PageFormRegister({Key? key});
 
   @override
-  State<PageRegisterApi> createState() => _PageRegisterApiState();
+  State<PageFormRegister> createState() => _PageFormRegisterState();
 }
 
-class _PageRegisterApiState extends State<PageRegisterApi> {
-
-  //untuk mendapatkan value dari text field
+class _PageFormRegisterState extends State<PageFormRegister> {
+  //Untuk mendapatkan value dari text field
   TextEditingController txtNama = TextEditingController();
   TextEditingController txtUsername = TextEditingController();
   TextEditingController txtPassword = TextEditingController();
   TextEditingController txtEmail = TextEditingController();
-  TextEditingController txtNoHP = TextEditingController();
+  TextEditingController txtNohp = TextEditingController();
 
   //validasi form
-  GlobalKey<FormState> keyForm= GlobalKey<FormState>();
+  GlobalKey<FormState> keyForm = GlobalKey<FormState>();
 
   //proses untuk hit api
   bool isLoading = false;
-  Future<ModelRegister?> registerAccount() async{
+  Future<void> registerAccount() async {
     //handle error
-    try{
+    try {
       setState(() {
         isLoading = true;
       });
 
-      http.Response response = await http.post(Uri.parse('http://192.168.100.110/edukasi_server1/register.php'),
+      http.Response response = await http.post(Uri.parse('http://192.168.100.110/edukasi_server(1)/register.php'),
           body: {
-            "fullname": txtNama.text,
             "username": txtUsername.text,
             "password": txtPassword.text,
+            "nama": txtNama.text,
             "email": txtEmail.text,
-            "nohp": txtNoHP.text,
+            "nohp": txtNohp.text,
           }
       );
       ModelRegister data = modelRegisterFromJson(response.body);
       //cek kondisi
       if(data.value == 1){
         //kondisi ketika berhasil register
-        setState(() {
-          isLoading = false;
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${data.message}'))
-          );
-
-          //pindah ke page login
-          Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context)
-          => PageLoginApi()
-          ), (route) => false);
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${data.message}'))
+        );
+        //pindah ke page login
+        Navigator.pushAndRemoveUntil(context, MaterialPageRoute(builder: (context)
+        => PageLoginApi()
+        ), (route) => false);
       }else if(data.value == 2){
         //kondisi akun sudah ada
-        setState(() {
-          isLoading = false;
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${data.message}'))
-          );
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${data.message}'))
+        );
       }else{
         //gagal
-        setState(() {
-          isLoading = false;
-          ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('${data.message}'))
-          );
-        });
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${data.message}'))
+        );
       }
-
-    }catch (e){
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(e.toString()))
+      );
+    } finally {
       setState(() {
         isLoading = false;
-        ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(e.toString()))
-        );
       });
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return  Scaffold(
+    return Scaffold(
       appBar: AppBar(
-        title: Text('Form Register',
-          style: TextStyle(
-            color: Colors.black, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.cyan,
-        iconTheme: IconThemeData(
-          color: Colors.black, // Ubah warna ikon back menjadi putih
-        ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            tooltip: 'Logout',
-          )
-        ],
+        backgroundColor: Colors.blue,
+        title: Text('Register'),
       ),
-
       body: Form(
         key: keyForm,
         autovalidateMode: AutovalidateMode.onUserInteraction,
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: const EdgeInsets.all(16.0),
           child: SingleChildScrollView(
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                SizedBox(height: 20,),
+                SizedBox(height: 20),
+                Text(
+                  'Selamat Datang!',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 20),
                 TextFormField(
                   //validasi kosong
-                  validator: (val){
-                    return val!.isEmpty ? "tidak boleh kosong " : null;
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
                   },
                   controller: txtNama,
                   decoration: InputDecoration(
-                      hintText: 'Input Full Name',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)
-                      )
+                    hintText: 'Nama',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-                SizedBox(height: 8,),
+                SizedBox(height: 8),
                 TextFormField(
                   //validasi kosong
-                  validator: (val){
-                    return val!.isEmpty ? "tidak boleh kosong " : null;
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
                   },
                   controller: txtUsername,
                   decoration: InputDecoration(
-                      hintText: 'Input Username',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)
-                      )
+                    hintText: 'Username',
+                    prefixIcon: Icon(Icons.account_circle),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-                SizedBox(height: 8,),
-                TextFormField(
-                  validator: (val){
-                    return val!.isEmpty ? "tidak boleh kosong " : null;
-                  },
-                  controller: txtPassword,
-                  obscureText: true,//biar password nya gak keliatan
-                  decoration: InputDecoration(
-                      hintText: 'Input Password',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)
-                      )
-                  ),
-                ),
-                SizedBox(height: 8,),
+                SizedBox(height: 8),
                 TextFormField(
                   //validasi kosong
-                  validator: (val){
-                    return val!.isEmpty ? "tidak boleh kosong " : null;
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
                   },
-
+                  controller: txtPassword,
+                  obscureText: true, //biar password tidak kelihatan
+                  decoration: InputDecoration(
+                    hintText: 'Password',
+                    prefixIcon: Icon(Icons.lock),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                ),
+                SizedBox(height: 8),
+                TextFormField(
+                  //validasi kosong
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
+                  },
                   controller: txtEmail,
                   decoration: InputDecoration(
-                      hintText: 'Input Email',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)
-                      )
+                    hintText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-
-                SizedBox(height: 8,),
+                SizedBox(height: 8),
                 TextFormField(
-                  validator: (val){
-                    return val!.isEmpty ? "tidak boleh kosong " : null;
+                  //validasi kosong
+                  validator: (val) {
+                    return val!.isEmpty ? "Tidak boleh kosong" : null;
                   },
-                  controller: txtNoHP,
+                  controller: txtNohp,
                   decoration: InputDecoration(
-                      hintText: 'Input No HP',
-                      border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(10)
-                      )
+                    hintText: 'No Hp',
+                    prefixIcon: Icon(Icons.phone),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
                   ),
                 ),
-
-                SizedBox(height: 15,),
-                Center( child: isLoading ? Center(
-                  child: CircularProgressIndicator(),
-                ) : MaterialButton(onPressed: (){
-
-                  //cek validasi form ada kosong atau tidak
-                  if(keyForm.currentState?.validate() == true){
-                    setState(() {
+                SizedBox(height: 20),
+                isLoading
+                    ? CircularProgressIndicator()
+                    : ElevatedButton(
+                  onPressed: () {
+                    if (keyForm.currentState?.validate() == true) {
                       registerAccount();
-                    });
-                  }
-
-                },
+                    }
+                  },
                   child: Text('Register'),
-                  color: Colors.green,
-                  textColor: Colors.white,
-                )
-                )],
+                  style: ElevatedButton.styleFrom(
+                    padding: EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+                  ),
+                ),
+                SizedBox(height: 20),
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (context) => PageLoginApi()),
+                    );
+                  },
+                  child: Text(
+                    'Sudah punya akun? Login di sini',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ),
-      ),
-      bottomNavigationBar: Padding(
-        padding: EdgeInsets.all(10),
-        child: MaterialButton(
-          shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-              side: const BorderSide(width: 1, color: Colors.green)
-          ),
-          onPressed: (){
-            Navigator.push(context, MaterialPageRoute(builder: (context)
-            => PageLoginApi()
-            ));
-          },
-          child: Text('Anda sudah punya account? Silkan Login'),
         ),
       ),
     );

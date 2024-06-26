@@ -1,39 +1,8 @@
-
 import 'package:flutter/material.dart';
-import 'package:lat_uts_zikra/screen_page/page_login_api.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
+import 'package:http/http.dart' as http;
+import '../model/model_update_user.dart';
 import '../utils/session_manager.dart';
 
-class SessionLatihanManager {
-  int? value;
-  String? idUser, userName, Nama, email, nohp;
-
-  Future<void> saveSession(int val, String id, String username, String nama, String email, String nohp) async{
-    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    await sharedPreferences.setInt("value", val);
-    await sharedPreferences.setString("id", id);
-    await sharedPreferences.setString("username", username);
-    await sharedPreferences.setString("nama", nama);
-    await sharedPreferences.setString("email", email);
-    await sharedPreferences.setString("nohp", nohp);
-  }
-
-  Future<void> getSession() async{
-    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    value = sharedPreferences.getInt("value");
-    idUser = sharedPreferences.getString("id");
-    userName = sharedPreferences.getString("username");
-    Nama = sharedPreferences.getString("nama");
-    email = sharedPreferences.getString("email");
-    nohp = sharedPreferences.getString("nohp");
-  }
-
-  Future<void> clearSession() async{
-    SharedPreferences sharedPreferences = await SharedPreferences.getInstance();
-    await sharedPreferences.clear();
-  }
-}
 
 class PageProfileUser extends StatefulWidget {
   const PageProfileUser({Key? key}) : super(key: key);
@@ -63,35 +32,7 @@ class _PageProfileUserState extends State<PageProfileUser> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text('Profil',
-          style: TextStyle(
-            color: Colors.white, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.black,
-        iconTheme: IconThemeData(
-          color: Colors.white, // Ubah warna ikon back menjadi putih
-        ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            tooltip: 'Logout',
-          )
-        ],
-      ),
+
       body: SingleChildScrollView(
         child: Center(
           child: Padding(
@@ -159,33 +100,26 @@ class _PageProfileUserState extends State<PageProfileUser> {
                   leading: Icon(Icons.phone),
                 ),
                 SizedBox(height: 20),
-                ElevatedButton(
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PageEditProfile(session: session),
-                      ),
-                    ).then((_) {
-                      setState(() {
-                        isLoading = true;
-                      });
-                      getDataSession();
-                    });
-                  },
-                  style: ElevatedButton.styleFrom(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
-                  ),
-                  child: Text(
-                    'Edit Profile',
-                    style: TextStyle(
-                      fontSize: 15,
-                    ),
-                  ),
-                ),
+                // ElevatedButton(
+                //   onPressed: () {
+                //     Navigator.pushAndRemoveUntil(
+                //       context, MaterialPageRoute(builder: (context) => PageEditProfile()),
+                //           (route) => false,
+                //     );
+                //   },
+                //   style: ElevatedButton.styleFrom(
+                //     shape: RoundedRectangleBorder(
+                //       borderRadius: BorderRadius.circular(10),
+                //     ),
+                //     padding: EdgeInsets.symmetric(vertical: 12, horizontal: 24),
+                //   ),
+                //   child: Text(
+                //     'Edit Profile',
+                //     style: TextStyle(
+                //       fontSize: 15,
+                //     ),
+                //   ),
+                // ),
               ],
             ),
           ),
@@ -195,120 +129,210 @@ class _PageProfileUserState extends State<PageProfileUser> {
   }
 }
 
-class PageEditProfile extends StatefulWidget {
-  final SessionLatihanManager session;
 
-  const PageEditProfile({Key? key, required this.session}) : super(key: key);
+class PageEditProfile extends StatefulWidget {
+  const PageEditProfile({Key? key}) : super(key: key);
 
   @override
   State<PageEditProfile> createState() => _PageEditProfileState();
 }
 
 class _PageEditProfileState extends State<PageEditProfile> {
+  late SessionLatihanManager session;
+  late TextEditingController txtUsername;
   late TextEditingController txtNama;
   late TextEditingController txtEmail;
-  late TextEditingController txtNoHP;
+  late TextEditingController txtNoHp;
+  late GlobalKey<FormState> keyForm;
+  bool isLoading = false;
 
   @override
   void initState() {
     super.initState();
-    txtNama = TextEditingController(text: widget.session.Nama);
-    txtEmail = TextEditingController(text: widget.session.email);
-    txtNoHP = TextEditingController(text: widget.session.nohp);
+    session = SessionLatihanManager();
+    txtUsername = TextEditingController();
+    txtNama = TextEditingController();
+    txtEmail = TextEditingController();
+    txtNoHp = TextEditingController();
+    keyForm = GlobalKey<FormState>();
+    getDataSession(); // Panggil method untuk mengisi nilai controller dari sesi
+  }
+
+  Future<void> getDataSession() async {
+    await session.getSession();
+    setState(() {
+      // Set nilai pada controller
+      txtUsername.text = session.userName ?? '';
+      txtNama.text = session.Nama ?? '';
+      txtEmail.text = session.email ?? '';
+      txtNoHp.text = session.nohp ?? '';
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Edit Profil',
+        backgroundColor: Colors.blue,
+        title: Text(
+          'Edit Profil',
           style: TextStyle(
-            color: Colors.black, // Ubah warna teks menjadi putih
-          ),),
-        backgroundColor: Colors.cyan,
-        iconTheme: IconThemeData(
-          color: Colors.black, // Ubah warna ikon back menjadi putih
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        actions: [
-          TextButton(onPressed: () {}, child: Text('Hi ... ${session.userName}')),
-          // Logout
-          IconButton(
-            onPressed: () {
-              // Clear session
-              setState(() {
-                session.clearSession();
-                Navigator.pushAndRemoveUntil(
-                  context,
-                  MaterialPageRoute(builder: (context) => PageLoginApi()),
-                      (route) => false,
-                );
-              });
-            },
-            icon: Icon(Icons.exit_to_app),
-            color: Colors.white, // Ubah warna ikon back menjadi putih
-            tooltip: 'Logout',
-          )
-        ],
+        centerTitle: true,
       ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              TextFormField(
-                controller: txtNama,
-                decoration: InputDecoration(
-                  labelText: 'Nama',
+      body: Padding(
+        padding: const EdgeInsets.all(8.0),
+        child: SingleChildScrollView(
+          child: Form(
+            key: keyForm,
+            child: Column(
+              children: [
+                SizedBox(height: 20),
+                TextFormField(
+                  controller: txtNama,
+                  decoration: InputDecoration(
+                    hintText: 'Nama',
+                    prefixIcon: Icon(Icons.person),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Nama tidak boleh kosong';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              SizedBox(height: 20),
-              TextFormField(
-                controller: txtEmail,
-                decoration: InputDecoration(
-                  labelText: 'Email',
+                SizedBox(height: 20),
+                TextFormField(
+                  controller: txtUsername,
+                  decoration: InputDecoration(
+                    hintText: 'Username',
+                    prefixIcon: Icon(Icons.account_circle),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Username tidak boleh kosong';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              SizedBox(height: 20),
-              TextFormField(
-                controller: txtNoHP,
-                decoration: InputDecoration(
-                  labelText: 'No. HP',
+                SizedBox(height: 20),
+                TextFormField(
+                  controller: txtEmail,
+                  decoration: InputDecoration(
+                    hintText: 'Email',
+                    prefixIcon: Icon(Icons.email),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Email tidak boleh kosong';
+                    }
+                    return null;
+                  },
                 ),
-              ),
-              SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: () {
-                  widget.session.saveSession(
-                    widget.session.value ?? 0,
-                    widget.session.idUser ?? '',
-                    widget.session.userName ?? '',
-                    txtNama.text,
-                    txtEmail.text,
-                    txtNoHP.text,
-                  ).then((_) {
-                    updateDatabase(txtNama.text, txtEmail.text, txtNoHP.text);
-                    Navigator.pop(context);
-                  });
-                },
-                child: Text('Simpan'),
-              ),
-            ],
+                SizedBox(height: 20),
+                TextFormField(
+                  controller: txtNoHp,
+                  decoration: InputDecoration(
+                    hintText: 'No HP',
+                    prefixIcon: Icon(Icons.phone),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'No HP tidak boleh kosong';
+                    }
+                    return null;
+                  },
+                ),
+                SizedBox(height: 20),
+                MaterialButton(
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    side: const BorderSide(width: 1, color: Colors.blueGrey),
+                  ),
+                  onPressed: () {
+                    if (keyForm.currentState!.validate()) {
+                      updateAccount();
+                    }
+                  },
+                  child: Text('Simpan'),
+                ),
+              ],
+            ),
           ),
         ),
       ),
     );
   }
 
-  @override
-  void dispose() {
-    txtNama.dispose();
-    txtEmail.dispose();
-    txtNoHP.dispose();
-    super.dispose();
+  Future<void> updateAccount() async {
+    try {
+      setState(() {
+        isLoading = true;
+      });
+
+      http.Response response = await http.post(
+        Uri.parse('http://192.168.100.110/edukasi_server(1)/updateUser.php'),
+        body: {
+          "username": txtUsername.text,
+          "email": txtEmail.text,
+          "nama": txtNama.text,
+          "nohp": txtNoHp.text,
+        },
+      );
+
+      print('Response JSON: ${response.body}');
+
+      ModelUpdateProfile data = modelUpdateProfileFromJson(response.body);
+
+      if (data.value == 1) {
+        setState(() {
+          isLoading = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${data.message}')),
+          );
+
+          // Pindah ke halaman profil
+          Navigator.pop(context);
+        });
+      } else {
+        setState(() {
+          isLoading = false;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('${data.message}')),
+          );
+        });
+      }
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Terjadi kesalahan: $e')),
+        );
+      });
+    }
   }
 
-  void updateDatabase(String nama, String email, String nohp) {
-    // Implementasi logika untuk mengupdate data di database
+  @override
+  void dispose() {
+    // Pastikan untuk dispose controller
+    txtUsername.dispose();
+    txtNama.dispose();
+    txtEmail.dispose();
+    txtNoHp.dispose();
+    super.dispose();
   }
 }
